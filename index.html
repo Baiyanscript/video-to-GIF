@@ -167,7 +167,7 @@ video{display:block;width:100%;max-height:420px;background:#080a0e;border-radius
         quality: Number($('quality').value),
         width, height,
         repeat: Number($('repeat').value),
-        workerScript: 'https://raw.githubusercontent.com/Baiyanscript/video-to-GIF/refs/heads/main/gif.worker.js'
+        workerScript: './gif.worker.js'
       });
       for (let i = 0; i < frameCount; i++) {
         if (cancelled) throw new Error('已取消轉換。');
