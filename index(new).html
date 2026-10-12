@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>影片轉 GIF</title>
+<style>
+:root{color-scheme:dark;--bg:#10131a;--panel:#191e29;--line:#30394a;--text:#eef2f8;--muted:#a7b1c3;--accent:#7c9cff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#10131a,#171d2a);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{width:min(920px,94vw);margin:36px auto 60px}h1{margin:0 0 8px;font-size:clamp(1.8rem,4vw,2.5rem)}p{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;margin-top:18px;box-shadow:0 12px 36px #0002}
+.drop{display:block;border:2px dashed #46516a;border-radius:14px;padding:28px;text-align:center;cursor:pointer;background:#121722}.drop:hover{border-color:var(--accent)}input[type=file]{max-width:100%}
+video{display:block;width:100%;max-height:420px;background:#080a0e;border-radius:12px;margin-top:16px} .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.field label{display:flex;justify-content:space-between;gap:10px;font-weight:600;margin-bottom:7px}.field input,.field select{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:#101520;color:var(--text)}.hint{font-size:.88rem;color:var(--muted);margin-top:5px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}button,.download{border:0;border-radius:10px;padding:12px 17px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}button{background:var(--accent);color:#0d1426}button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#2a3345;color:var(--text)}.status{margin-top:14px;color:#d6def0;white-space:pre-wrap}.progress{height:8px;border-radius:99px;background:#0e121a;overflow:hidden;margin-top:10px}.bar{height:100%;width:0;background:var(--accent);transition:width .15s}.result{display:none;margin-top:18px}.result img{display:block;max-width:100%;max-height:450px;border-radius:12px;background:#0a0d12}.small{font-size:.88rem}.warning{border-left:3px solid #d9a441;padding-left:12px;color:#d9d3c4}.footer{font-size:.85rem;color:var(--muted);margin-top:22px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.panel{padding:16px}main{margin-top:22px}}
+</style>
+</head>
+<body>
+<main>
+  <h1>🎞️ 影片轉 GIF</h1>
+  <p>在瀏覽器中選擇影片、設定片段與畫質，再輸出 GIF 動圖。</p>
+  <section class="panel">
+    <label class="drop" for="videoFile">
+      <strong>選擇影片檔案</strong><br>
+      <span class="small">支援瀏覽器可播放的影片，例如 MP4、WebM、MOV（依瀏覽器而定）</span><br><br>
+      <input id="videoFile" type="file" accept="video/*">
+    </label>
+    <video id="video" controls playsinline></video>
+    <div class="hint" id="videoInfo">尚未選擇影片。</div>
+  </section>
+
+  <section class="panel">
+    <h2 style="margin-top:0">GIF 設定</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="start">開始時間（秒）</label>
+        <input id="start" type="number" min="0" step="0.1" value="0">
+      </div>
+      <div class="field">
+        <label for="end">結束時間（秒）</label>
+        <input id="end" type="number" min="0.1" step="0.1" value="3">
+      </div>
+      <div class="field">
+        <label for="width">GIF 寬度（像素）</label>
+        <select id="width">
+          <option value="320">320 px（檔案較小）</option>
+          <option value="480" selected>480 px（推薦）</option>
+          <option value="640">640 px（較清晰）</option>
+          <option value="original">原始寬度</option>
+          <option value="custom">自訂寬度</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="height">GIF 高度（像素）</label>
+        <select id="height">
+          <option value="240">240 px</option>
+          <option value="360" selected>360 px</option>
+          <option value="480">480 px</option>
+          <option value="720">720 px</option>
+          <option value="original">原始高度</option>
+          <option value="custom">自訂高度</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="customWidth">自訂寬度（像素）</label>
+        <input id="customWidth" type="number" min="16" max="1920" step="1" value="480" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label for="customHeight">自訂高度（像素）</label>
+        <input id="customHeight" type="number" min="16" max="1920" step="1" value="360" inputmode="numeric">
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label for="keepRatio">尺寸比例</label>
+        <label style="display:flex;align-items:center;justify-content:flex-start;font-weight:400;gap:8px">
+          <input id="keepRatio" type="checkbox" checked style="width:auto"> 保持影片原始比例（建議）
+        </label>
+        <div class="hint">取消勾選後，才會同時使用自訂的寬度與高度。</div>
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>片段時間軸</label>
+        <div class="hint">拖動滑桿快速選擇開始與結束時間，也可以使用上方秒數欄位微調。</div>
+        <label for="startRange">開始：<span id="startRangeText">0.0 秒</span></label>
+        <input id="startRange" type="range" min="0" max="3" step="0.1" value="0">
+        <label for="endRange">結束：<span id="endRangeText">3.0 秒</span></label>
+        <input id="endRange" type="range" min="0.1" max="3" step="0.1" value="3">
+      </div>
+      <div class="field">
+        <label for="fps">每秒影格數（FPS）</label>
+        <select id="fps">
+          <option value="5">5 FPS（小檔案）</option>
+          <option value="10" selected>10 FPS（推薦）</option>
+          <option value="15">15 FPS（較流暢）</option>
+          <option value="20">20 FPS（檔案較大）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="quality">色彩品質 <span id="qualityText">10</span></label>
+        <input id="quality" type="range" min="1" max="20" value="10">
+        <div class="hint">數值越低通常品質越好，但處理可能較慢。</div>
+      </div>
+      <div class="field">
+        <label for="repeat">播放方式</label>
+        <select id="repeat">
+          <option value="0" selected>循環播放</option>
+          <option value="-1">只播放一次</option>
+        </select>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:16px;padding:14px;background:#121722;box-shadow:none">
+      <strong>預估 GIF 檔案大小</strong>
+      <div id="estimate" style="font-size:1.25rem;font-weight:700;margin-top:4px">載入影片後計算</div>
+      <div class="hint">這是依影格數與像素量推算的粗略範圍；實際大小會因畫面細節、顏色與動態程度而有明顯差異。</div>
+    </div>
+    <p class="hint">建議先轉 2–5 秒的片段。GIF 色彩最多 256 色，影片太長或尺寸太大會產生很大的檔案。</p>
+    <div class="actions">
+      <button id="convert" disabled>開始轉換 GIF</button>
+      <button id="cancel" class="secondary" disabled>取消轉換</button>
+    </div>
+    <div class="status" id="status" role="status">請先選擇影片。</div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="result" id="result">
+      <h3>轉換完成</h3>
+      <img id="gifPreview" alt="轉換後的 GIF 預覽">
+      <p id="gifInfo" class="hint"></p>
+      <a id="download" class="download" download="video.gif" style="background:#8fe0b0;color:#102016">下載 GIF</a>
+    </div>
+  </section>
+  <p class="footer">隱私提示：影片在你的瀏覽器本機處理，不會由此頁面上傳到伺服器。轉換功能需要連線載入 gif.js 函式庫；請使用最新版 Chrome、Edge 或 Firefox。若直接雙擊 HTML 出現 Worker / origin null 錯誤，請透過本機 HTTP 伺服器開啟（例如在此檔案所在資料夾執行 <code>python -m http.server 8000</code>，再瀏覽 <code>http://localhost:8000/video_to_gif.html</code>）。</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/gif.js.optimized/dist/gif.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const fileInput = $('videoFile'), video = $('video'), info = $('videoInfo');
+  const convertBtn = $('convert'), cancelBtn = $('cancel'), status = $('status');
+  const bar = $('bar'), result = $('result'), preview = $('gifPreview'), download = $('download');
+  let objectUrl = null, gif = null, cancelled = false, busy = false;
+  const estimate = $('estimate');
+  const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+  const formatBytes = bytes => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+
+  function getOutputSize() {
+    if (!video.videoWidth || !video.videoHeight) return {width: 480, height: 270};
+    const widthMode = $('width').value;
+    const heightMode = $('height').value;
+    let width = widthMode === 'original' ? video.videoWidth : widthMode === 'custom' ? Number($('customWidth').value) : Number(widthMode);
+    let height = heightMode === 'original' ? video.videoHeight : heightMode === 'custom' ? Number($('customHeight').value) : Number(heightMode);
+    width = clamp(Math.round(Number.isFinite(width) && width > 0 ? width : 480), 16, 1920);
+    height = clamp(Math.round(Number.isFinite(height) && height > 0 ? height : 270), 16, 1920);
+    if ($('keepRatio').checked) height = Math.max(1, Math.round(video.videoHeight * width / video.videoWidth));
+    return {width, height};
+  }
+
+  function updateEstimate() {
+    if (!video.videoWidth || !Number.isFinite(video.duration)) { estimate.textContent = '載入影片後計算'; return; }
+    const start = Number($('start').value), end = Number($('end').value), fps = Number($('fps').value);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || fps <= 0) { estimate.textContent = '請設定有效的開始與結束時間'; return; }
+    const {width, height} = getOutputSize();
+    const frames = Math.ceil((end - start) * fps);
+    const pixels = width * height * frames;
+    const low = pixels * 0.035, high = pixels * 0.18;
+    estimate.textContent = `${formatBytes(low)} – ${formatBytes(high)}（約 ${frames} 個影格，${width} × ${height}）`;
+  }
+
+  function syncTimeline(source) {
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    const startEl = $('start'), endEl = $('end'), startRange = $('startRange'), endRange = $('endRange');
+    let start = clamp(Number(startEl.value) || 0, 0, duration);
+    let end = clamp(Number(endEl.value) || Math.min(3, duration), 0, duration);
+    if (source === 'startRange') start = Number(startRange.value);
+    if (source === 'endRange') end = Number(endRange.value);
+    if (end <= start) {
+      if (source === 'startRange' || source === 'start') end = Math.min(duration, start + 0.1);
+      else start = Math.max(0, end - 0.1);
+    }
+    startEl.value = start.toFixed(1); endEl.value = end.toFixed(1);
+    startRange.value = start; endRange.value = end;
+    $('startRangeText').textContent = `${start.toFixed(1)} 秒`;
+    $('endRangeText').textContent = `${end.toFixed(1)} 秒`;
+    updateEstimate();
+  }
+
+  $('quality').addEventListener('input', () => { $('qualityText').textContent = $('quality').value; updateEstimate(); });
+  ['start','end'].forEach(id => $(id).addEventListener('input', () => syncTimeline(id)));
+  $('startRange').addEventListener('input', () => syncTimeline('startRange'));
+  $('endRange').addEventListener('input', () => syncTimeline('endRange'));
+  ['fps','width','height','customWidth','customHeight','keepRatio'].forEach(id => {
+    $(id).addEventListener('input', updateEstimate);
+    $(id).addEventListener('change', updateEstimate);
+  });
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    video.src = objectUrl;
+    result.style.display = 'none';
+    status.textContent = '正在載入影片…';
+    video.onloadedmetadata = () => {
+      $('start').max = Math.max(0, video.duration);
+      $('end').max = Math.max(0, video.duration);
+      $('end').value = Math.min(3, video.duration).toFixed(1);
+      $('start').value = '0';
+      $('startRange').max = video.duration; $('endRange').max = video.duration;
+      $('endRange').value = Math.min(3, video.duration);
+      $('startRange').value = 0;
+      info.textContent = `${file.name} · ${video.videoWidth} × ${video.videoHeight} · ${video.duration.toFixed(2)} 秒 · ${(file.size/1024/1024).toFixed(2)} MB`;
+      status.textContent = '影片已載入，請設定片段後開始轉換。';
+      convertBtn.disabled = false;
+      syncTimeline();
+      updateEstimate();
+    };
+    video.onerror = () => { status.textContent = '無法讀取這個影片格式，請改用 MP4 或 WebM。'; };
+  });
+
+  function setBusy(value) {
+    busy = value;
+    convertBtn.disabled = value || !video.src;
+    cancelBtn.disabled = !value;
+  }
+  function seekTo(time) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('影片定位逾時，請重試。')), 10000);
+      const done = () => { clearTimeout(timer); video.removeEventListener('seeked', done); resolve(); };
+      video.addEventListener('seeked', done, {once:true});
+      video.currentTime = time;
+      if (Math.abs(video.currentTime - time) < 0.015 && video.readyState >= 2) {
+        video.removeEventListener('seeked', done); clearTimeout(timer); resolve();
+      }
+    });
+  }
+  const sleepFrame = () => new Promise(resolve => requestAnimationFrame(() => resolve()));
+
+  convertBtn.addEventListener('click', async () => {
+    if (busy || !video.src) return;
+    if (typeof GIF === 'undefined') {
+      status.textContent = 'GIF 函式庫載入失敗。請確認網路連線後重新整理頁面。';
+      return;
+    }
+    const duration = video.duration;
+    const start = Number($('start').value), end = Number($('end').value);
+    const fps = Number($('fps').value);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > duration) {
+      status.textContent = `時間設定無效。請輸入 0 到 ${duration.toFixed(2)} 秒之間的範圍，且結束時間要大於開始時間。`;
+      return;
+    }
+    if (end - start > 30 && !confirm('片段超過 30 秒，可能需要很久並產生非常大的 GIF。仍要繼續嗎？')) return;
+
+    cancelled = false; result.style.display = 'none'; bar.style.width = '0%'; setBusy(true);
+    const outputSize = getOutputSize();
+    const width = outputSize.width;
+    const height = outputSize.height;
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width < 16 || height < 16 || width > 1920 || height > 1920) {
+      status.textContent = '輸出寬度與高度必須介於 16 至 1920 像素。';
+      setBusy(false); return;
+    }
+    const frameCount = Math.ceil((end - start) * fps);
+    const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d', {willReadFrequently:true});
+    updateEstimate();
+    status.textContent = `準備轉換：${frameCount} 個影格，${width} × ${height}。請保持此分頁開啟。`;
+
+    try {
+      // Use the library's bundled worker by default. Browsers often block a
+      // cross-origin Worker when this page is opened directly via file:// (origin null).
+      // This workerScript URL is intended for pages served over HTTP(S).
+      gif = new GIF({
+        workers: 2,
+        quality: Number($('quality').value),
+        width, height,
+        repeat: Number($('repeat').value),
+        workerScript: './gif.worker.js'
+      });
+      for (let i = 0; i < frameCount; i++) {
+        if (cancelled) throw new Error('已取消轉換。');
+        const t = Math.min(end - 0.001, start + i / fps);
+        await seekTo(t);
+        if (cancelled) throw new Error('已取消轉換。');
+        ctx.drawImage(video, 0, 0, width, height);
+        gif.addFrame(ctx, {copy:true, delay:Math.round(1000 / fps)});
+        bar.style.width = `${Math.round((i + 1) / frameCount * 65)}%`;
+        status.textContent = `擷取影格中：${i + 1} / ${frameCount}`;
+        if (i % 3 === 0) await sleepFrame();
+      }
+      status.textContent = '正在編碼 GIF…';
+      await new Promise((resolve, reject) => {
+        gif.on('progress', p => {
+          bar.style.width = `${65 + Math.round(p * 35)}%`;
+          status.textContent = `正在編碼 GIF… ${Math.round(p * 100)}%`;
+        });
+        gif.on('finished', blob => {
+          const url = URL.createObjectURL(blob);
+          preview.src = url; download.href = url;
+          download.download = (fileInput.files[0].name.replace(/\.[^.]+$/, '') || 'video') + '.gif';
+          $('gifInfo').textContent = `實際檔案大小：${formatBytes(blob.size)} (${(blob.size/1024/1024).toFixed(2)} MB) · ${width} × ${height} · ${fps} FPS · ${(end-start).toFixed(1)} 秒`;
+          result.style.display = 'block'; bar.style.width = '100%';
+          status.textContent = '完成！可以預覽並下載 GIF。'; resolve();
+        });
+        gif.on('abort', () => reject(new Error('轉換已中止。')));
+        gif.on('error', err => reject(err instanceof Error ? err : new Error('GIF 編碼失敗。')));
+        gif.render();
+      });
+    } catch (err) {
+      status.textContent = cancelled ? '轉換已取消。' : `轉換失敗：${err.message || err}\n請縮短片段、降低寬度或 FPS 後重試。`;
+      bar.style.width = '0%';
+    } finally {
+      gif = null; setBusy(false);
+    }
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    cancelled = true;
+    if (gif) { try { gif.abort(); } catch (_) {} }
+    status.textContent = '正在取消…';
+  });
+})();
+</script>
+</body>
+</html>
